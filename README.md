@@ -38,7 +38,9 @@ Bộ xử lý ARM có hai trạng thái chính mà chúng có thể hoạt độ
 
 Các lệnh ARM thường được theo sau bởi một hoặc hai toán hạng và thường sử dụng mẫu sau:
 
-`MNEMONIC{S}{condition} {Rd}, Operand1, Operand2`
+```asm
+MNEMONIC{S}{condition} {Rd}, Operand1, Operand2
+```
 
 > MNEMONIC     - Tên viết tắt
 > 
@@ -52,7 +54,7 @@ Các lệnh ARM thường được theo sau bởi một hoặc hai toán hạng 
 > 
 > Operand2     - Toán hạng thứ hai (linh hoạt). Có thể là một giá trị tức thời (số) hoặc một thanh ghi có tùy chọn dịch chuyển.
 
-```
+```asm
 ADD   R0, R1, R2         - Thêm nội dung của R1 (Toán hạng 1) và R2 (Toán hạng 2 dưới dạng thanh ghi) và lưu trữ kết quả vào R0 (Rd)
 ADD   R0, R1, #2         - Thêm nội dung của R1 (Toán hạng 1) và giá trị 2 (Toán hạng 2 dưới dạng giá trị tức thời) và lưu trữ kết quả vào R0 (Rd)
 MOVLE R0, #5             - Di chuyển số 5 (Toán hạng 2, vì trình biên dịch coi nó là MOVLE R0, R0, #5) đến R0 (Rd) CHỈ khi điều kiện LE (Nhỏ hơn hoặc Bằng) được đáp ứng
@@ -71,3 +73,72 @@ ARM sử dụng mô hình LOAD-STORE trữ để truy cập bộ nhớ, nghĩa l
 
 <img width="833" height="451" alt="ảnh" src="https://github.com/user-attachments/assets/6de4186c-409e-44ce-8824-c685eba4ac74" />
 
+<img width="792" height="680" alt="ảnh" src="https://github.com/user-attachments/assets/edc60e6d-35f5-41d3-9f89-fe1a6cf71f98" />
+
+## Load/Store Multiple
+
+LDM và STM có các biến thể. Loại biến thể được xác định bởi hậu tố của lệnh. Các hậu tố được sử dụng trong ví dụ là: -IA (tăng sau), -IB (tăng trước), -DA (giảm sau), -DB (giảm trước)
+
+LDM giống với LDMIA, nghĩa là địa chỉ của phần tử tiếp theo được tải sẽ được tăng lên sau mỗi lần tải. Theo cách này, chúng ta có được một lần tải dữ liệu tuần tự (chuyển tiếp) từ địa chỉ bộ nhớ được chỉ định bởi toán hạng đầu tiên (thanh ghi lưu trữ địa chỉ nguồn).
+
+```asm
+ldmia r0, {r4-r6} /* words[3] -> r4 = 0x03, words[4] -> r5 = 0x04; words[5] -> r6 = 0x05; */ 
+stmia r1, {r4-r6} /* r4 -> array_buff[0] = 0x03; r5 -> array_buff[1] = 0x04; r6 -> array_buff[2] = 0x05 */
+```
+
+Sau khi thực hiện hai lệnh trên, các thanh ghi R4-R6 và các địa chỉ bộ nhớ 0x000100D0, 0x000100D4 và 0x000100D8 chứa các giá trị 0x3, 0x4 và 0x5.
+
+Lệnh LDMIB trước tiên tăng địa chỉ nguồn thêm 4 byte (giá trị một từ) rồi thực hiện lần tải đầu tiên. Theo cách này, chúng ta vẫn có một lần tải dữ liệu tuần tự (chuyển tiếp), nhưng phần tử đầu tiên cách địa chỉ nguồn 4 byte.
+
+```asm
+ldmib r0, {r4-r6}            /* words[4] -> r4 = 0x04; words[5] -> r5 = 0x05; words[6] -> r6 = 0x06 */
+stmib r1, {r4-r6}            /* r4 -> array_buff[1] = 0x04; r5 -> array_buff[2] = 0x05; r6 -> array_buff[3] = 0x06 */
+```
+Sau khi thực hiện hai lệnh trên, các thanh ghi R4-R6 và các địa chỉ bộ nhớ 0x100D4, 0x100D8 và 0x100DC chứa các giá trị 0x4, 0x5 và 0x6.
+
+Khi chúng ta sử dụng lệnh LDMDA, mọi thứ bắt đầu hoạt động ngược lại. R0 trỏ tới words[3]. Khi quá trình tải bắt đầu, chúng ta di chuyển ngược lại và tải các words[3], words[2] và words[1] vào R6, R5, R4.
+
+Tải nhiều, giảm dần sau:
+
+```asm
+ldmda r0, {r4-r6} /* words[3] -> r6 = 0x03; words[2] -> r5 = 0x02; words[1] -> r4 = 0x01 */
+```
+
+Thanh ghi R4, R5, R6:
+```asm
+gef> info register r4 r5 r6
+r4     0x1    1
+r5     0x2    2
+r6     0x3    3
+```
+
+Tải nhiều, giảm dần trước:
+
+```asm
+ldmdb r0, {r4-r6} /* words[2] -> r6 = 0x02; words[1] -> r5 = 0x01; words[0] -> r4 = 0x00 */
+```
+
+Thanh ghi R4, R5, R6:
+```asm
+gef> info register r4 r5 r6
+r4 0x0 0
+r5 0x1 1
+r6 0x2 2
+```
+
+## PUSH and POP
+
+Khi PUSH vào STACK:
+* Đầu tiên, địa chỉ trong SP sẽ GIẢM đi 4.
+* Thứ hai, thông tin được lưu trữ tại địa chỉ mới được SP trỏ tới.
+
+Khi POP ra khỏi STACK:
+* Giá trị tại địa chỉ SP hiện tại được tải vào một thanh ghi nhất định,
+* Địa chỉ trong SP được TĂNG thêm 4.
+
+``` asm
+PUSH = STMDB sp!, reglist
+POP = LDMIA sp! reglist
+```
+
+## Conditional Execution
