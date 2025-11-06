@@ -142,3 +142,6 @@ POP = LDMIA sp! reglist
 ```
 
 ## Conditional Execution
+
+<img width="581" height="745" alt="image" src="https://github.com/user-attachments/assets/fe6052ae-6be6-4f0b-b569-03e8bad74552" />
+
