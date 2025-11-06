@@ -1,4 +1,4 @@
-<img width="833" height="451" alt="ảnh" src="https://github.com/user-attachments/assets/061a3032-8166-4aab-acb9-7a11ba33b377" /># ARM-Tutorial
+# ARM-Tutorial
 
 ## ARM Registers
 
